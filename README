@@ -1,0 +1,43 @@
+0. Provided Foundation Model is built, these are the directions
+   for get 'lkvm' to boot a guest. I launch Foundation model in bridge
+   mode so I can ssh to it.
+  
+	HOST Network setup
+			br0 (IP used in /etc/exports) to nfs mount
+                           \
+                            \
+                           tap0
+
+   > Foundation_v8 --image ./linux-system.axf --network bridged --network-bridge=tap0
+  
+1 on Trusty-14.04 
+    # git clone https://github.com/penberg/linux-kvm.git
+    > make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- defconfig
+    > make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- menuconfig
+      - save settings 
+    # save settings, make sure virtualization is enabled
+    > make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- Image
+
+    > cd tools/kvm
+    vi Makefile - comment out the GTK stuff like 'FLAGS_GTK3' and ifeq 
+                  if you don't plan to use graphics, comment it out otherwise
+                  you'll need multiarch arm64 build environment
+    # make it static so you don't have to worry about rootfs environment 
+    > make ARCH=arm64 CROSS_COMPILE_aarch64-linux-gnu- lkvm-static
+
+2 Building Guest Kernel
+  > cp HOST_LKVM_CONFIG .config
+    - The config file is very important it enable virtio and lkvm console
+  > make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- menuconfig
+    - save settings
+  > make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- Image
+  > cp Image to Foundation Model - where ever you will run lkvm
+
+3 I use 'initrd.ext3' tiny root filesystem to boot quickly but you could
+  use other images.
+
+4. In foundation model run:
+
+  ./lkvm-static run --kernel Image -d initrd.ext3 -m 512 --console virtio --params "earlyprintk=smh console=hvc0 rw root=/dev/vda"
+
+  - adjust the variables as needed
